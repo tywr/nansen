@@ -5,6 +5,11 @@ RUN apt-get update
 RUN apt-get upgrade -y
 RUN apt-get install -y git
 
-RUN uv pip install --system --python python3.12 setuptools wheel twine build
+RUN uv pip install --system setuptools wheel twine build
 
 WORKDIR /app
+
+COPY ./pyproject.toml .
+COPY ./setup.py .
+
+RUN uv pip install --system -r pyproject.toml

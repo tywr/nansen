@@ -5,5 +5,7 @@ services:
       context: .
     image: nansen
     volumes:
-      - ./:/app/
+      - ./nansen:/app/nansen
+      - ./.git:/app/.git
+      - ./data:/data
     command: python -m build --wheel
