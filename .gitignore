@@ -1,5 +1,7 @@
 .env
+data/*
 dist/*
 build/*
 *.egg-info
 *.pyc
+nansen/_version.py

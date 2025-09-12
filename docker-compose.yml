@@ -1,0 +1,9 @@
+services:
+  nansen:
+    build:
+      dockerfile: ./Dockerfile
+      context: .
+    image: nansen
+    volumes:
+      - ./:/app/
+    command: python -m build --wheel
