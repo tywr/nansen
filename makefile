@@ -1,6 +1,4 @@
 CONTAINER = nansen
-SHELL = /bin/bash
-GIT_TAG := $(shell git describe --tags)
 
 build-container:
 	docker compose build ${CONTAINER}
@@ -12,3 +10,8 @@ build-package: build-container
 .SILENT:
 test-package: build-package
 	docker compose run --rm ${CONTAINER} python
+
+
+.SILENT:
+publish: build-package
+	twine upload dist/*

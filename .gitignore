@@ -5,3 +5,4 @@ build/*
 *.egg-info
 *.pyc
 nansen/_version.py
+sandbox/*

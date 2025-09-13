@@ -4,3 +4,5 @@ try:
     from ._version import __version__
 except ImportError:
     __version__ = "0.0.0-dev"
+
+from nansen.io.gpx import read_gpx_track

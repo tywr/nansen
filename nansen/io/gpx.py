@@ -1,7 +1,7 @@
-from nansen.core.gpx_data_frame import GpxDataFrame
+from nansen.core.gpx import GpxTrack
 
 
-def load_raw_gpx(file):
+def load_raw_gpx_tracks(file) -> list[dict]:
     """
     Load a GPX file and return the data as a list of dictionaries.
 
@@ -24,61 +24,32 @@ def load_raw_gpx(file):
     with open(file, "r") as f:
         gpx = gpxpy.parse(f)
 
-    data = []
-    tracks = set()
-    routes = set()
-
-    # # Waypoints
-    # for waypoint in gpx.waypoints:
-    #     data.append(
-    #         {
-    #             "type": "waypoint",
-    #             "name": waypoint.name,
-    #             "latitude": waypoint.latitude,
-    #             "longitude": waypoint.longitude,
-    #             "elevation": waypoint.elevation,
-    #             "time": waypoint.time,
-    #             "description": waypoint.description,
-    #         }
-    #     )
-
-    # Tracks
-    for track in gpx.tracks:
-        for segment in track.segments:
-            for point in segment.points:
-                tracks.add(track.name)
-                data.append(
-                    {
-                        "type": "track_point",
-                        "track_name": track.name,
-                        "latitude": point.latitude,
-                        "longitude": point.longitude,
-                        "elevation": point.elevation,
-                        "time": point.time,
-                    }
-                )
-
-    # Routes
-    for route in gpx.routes:
-        for point in route.points:
-            routes.add(route.name)
-            data.append(
+    tracks = []
+    for i, track in enumerate(gpx.tracks):
+        for j, segment in enumerate(track.segments):
+            tracks.append(
                 {
-                    "type": "route_point",
-                    "route_name": route.name,
-                    "latitude": point.latitude,
-                    "longitude": point.longitude,
-                    "elevation": point.elevation,
-                    "time": point.time,
+                    "track_name": track.name,
+                    "track_index": i,
+                    "points": [
+                        {
+                            "segment_index": j,
+                            "latitude": point.latitude,
+                            "longitude": point.longitude,
+                            "elevation": point.elevation,
+                            "time": point.time,
+                        }
+                        for point in segment.points
+                    ],
                 }
             )
 
-    return tracks, routes, data
+    return tracks
 
 
-def read_gpx(
-    file: str, track: str | None = None, route: str | None = None
-) -> GpxDataFrame:
+def read_gpx_track(
+    file: str, track_index: int | None = None, track_name: str | None = None
+) -> GpxTrack:
     """
     Read a GPX file and return the data as a nansen GpxDataFrame.
 
@@ -86,10 +57,10 @@ def read_gpx(
     ----------
     file : str
         Path to the GPX file.
-    track : str, optional
-        Name of the track to extract. If None, the only track in the file is extracted.
-    route : str, optional
-        Name of the route to extract. If None, the only route in the file is extracted.
+    track_index : int, optional
+        Index of the track to read, by default 0
+    track_name : str, optional
+        Name of the track to read, by default None
 
     Returns
     -------
@@ -98,64 +69,21 @@ def read_gpx(
     """
     import pandas as pd
 
-    selected = None
-    gpx_type = None
+    if track_index is not None and track_name is not None:
+        raise ValueError("Only one of track_index or track_name can be specified.")
+    elif track_index is None and track_name is None:
+        track_index = 0
 
-    if track and route:
-        raise ValueError("Only one of 'track' or 'route' can be specified.")
-    if track:
-        gpx_type = "track"
-    if route:
-        gpx_type = "route"
+    raw = load_raw_gpx_tracks(file)
 
-    tracks, routes, raw = load_raw_gpx(file)
+    # Find track index by name if specified
+    if track_name is not None:
+        lookup = {t["track_name"]: t["track_index"] for t in raw}
+        if track_name not in lookup:
+            raise ValueError(f"Track name '{track_name}' not found in GPX file.")
+        track_index = lookup[track_name]
 
-    if not track:
-        if len(tracks) == 1:
-            selected = tracks.pop()
-            gpx_type = "track"
-        elif len(tracks) > 1:
-            raise ValueError(f"Multiple tracks found in file. Specify one of: {tracks}")
-    elif track not in tracks:
-        raise ValueError(
-            f"Track '{track}' not found in file. Available tracks: {tracks}"
-        )
-
-    if not route:
-        if len(routes) == 1:
-            if selected:
-                raise ValueError(
-                    "File contains both tracks and routes. Specify only one."
-                )
-            else:
-                selected = routes.pop()
-                gpx_type = "route"
-        elif len(routes) > 1:
-            raise ValueError(f"Multiple routes found in file. Specify one of: {routes}")
-    elif route not in routes:
-        raise ValueError(
-            f"Route '{route}' not found in file. Available routes: {routes}"
-        )
-
-    raw = (
-        [
-            {
-                k: v
-                for k, v in entry.items()
-                if k in ["latitude", "longitude", "elevation", "time"]
-            }
-            for entry in raw
-            if entry.get("track_name") == selected
-            or entry.get("route_name") == selected
-        ]
-        if selected
-        else raw
+    track_data = next((t for t in raw if t["track_index"] == track_index), None)
+    return GpxTrack.from_points(
+        name=track_data["track_name"], points=track_data["points"]
     )
-    gpx_df = pd.DataFrame(raw)
-    gpx_df["time"] = pd.to_datetime(gpx_df["time"], errors="coerce")
-    return GpxDataFrame(gpx_df=gpx_df, type=gpx_type)
-
-
-if __name__ == "__main__":
-    gpx_df = read_gpx("/data/alpi.gpx")
-    print(gpx_df)
