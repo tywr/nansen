@@ -11,5 +11,10 @@ WORKDIR /app
 
 COPY ./pyproject.toml .
 COPY ./setup.py .
+COPY ./Dockerfile .
+COPY ./.gitignore .
+COPY ./README.md .
+COPY ./docker-compose.yml .
+COPY ./makefile .
 
 RUN uv pip install --system -r pyproject.toml

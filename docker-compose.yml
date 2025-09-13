@@ -8,4 +8,5 @@ services:
       - ./nansen:/app/nansen
       - ./.git:/app/.git
       - ./data:/data
+      - ./dist:/app/dist
     command: python -m build --wheel
