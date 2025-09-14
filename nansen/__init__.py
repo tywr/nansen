@@ -6,3 +6,4 @@ except ImportError:
     __version__ = "0.0.0-dev"
 
 from nansen.io.gpx import read_gpx_track
+from nansen.core.gpx import GpxTrack

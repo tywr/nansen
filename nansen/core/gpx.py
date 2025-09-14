@@ -4,8 +4,9 @@ import numpy as np
 from geopy.distance import geodesic
 from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
+from typing import Callable
 
-from nansen.utils.smooth import smooth
+import nansen as ns
 
 
 class GpxTrack:
@@ -186,6 +187,16 @@ class GpxTrack:
 
         return ax
 
+    def head(self, n=100):
+        """Return a new GpxTrack with the first n points."""
+        return GpxTrack(
+            name=self.name,
+            latitude=self.latitude[:n],
+            longitude=self.longitude[:n],
+            elevation=self.elevation[:n],
+            time=self.time[:n],
+        )
+
     def trim_mask(self, mask, interpolate=True):
         """Trim points where speed exceeds max_speed_kmh and interpolate the removed points."""
         if interpolate:
@@ -269,43 +280,28 @@ class GpxTrack:
         mask = (self.time <= start_time) | (self.time >= end_time)
         return self.trim_mask(mask, interpolate=interpolate)
 
-    def recalibrate_barometer_elevation(
-        self, min_elevation: str | None = None, max_elevation: str | None = None
-    ) -> "GpxTrack":
-        """Cure barometer elevation data by removing unrealistic elevation values.
+    def fix_elevation(
+        self, elevation_function: Callable | None = None, dataset: str = "test-dataset"
+    ):
+        if elevation_function is None:
+            from nansen.utils.elevation import get_elevations_opentopo
 
-        Parameters
-        ----------
-        - min_elevation: minimum realistic elevation (e.g. 0 for sea level)
-        - max_elevation: maximum realistic elevation (e.g. 8848 for Mount Everest)
+            def elevation_function(track):
+                return get_elevations_opentopo(track, dataset=dataset)
 
-        Returns
-        -------
-        - GpxTrack: a new GpxTrack instance with cured elevation data
-        """
-        if self.elevation is None:
-            return self
-
-        max_seen_elevation = max(self.elevation)
-        min_seen_elevation = min(self.elevation)
-        if max_elevation is None:
-            max_elevation = max_seen_elevation
-        if min_elevation is None:
-            min_elevation = min_seen_elevation
-        f = interp1d(
-            [min_seen_elevation, max_seen_elevation], [min_elevation, max_elevation]
-        )
         return GpxTrack(
             name=self.name,
             latitude=self.latitude,
             longitude=self.longitude,
-            elevation=f(self.elevation),
+            elevation=elevation_function(self),
             time=self.time,
         )
 
     def smooth(
         self, n=5, window="hanning", start_time=None, end_time=None, segment=None
     ):
+        from nansen.utils.smooth import smooth
+
         """Smooth position data (and subsequently distance, velocity etc.)
 
         Parameters
