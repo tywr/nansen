@@ -9,6 +9,7 @@ RUN uv pip install --system setuptools wheel twine build
 
 WORKDIR /app
 
+COPY ./LICENSE .
 COPY ./pyproject.toml .
 COPY ./setup.py .
 COPY ./Dockerfile .
